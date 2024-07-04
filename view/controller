@@ -1,0 +1,167 @@
+  Laravel:-
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  public function index()
+    {   
+        $templatArr=Templates::all();
+        return view("Templates/view",["TemplateArr"=>$templatArr]);
+    }
+
+    public function empList(Request $request){
+        // POST data
+        $postData = $request->post();
+        $template_name=$request->post('template_name');
+        $template_image=$request->file('doc');
+        // Get data
+        $data = $this->getUsers($postData,$template_name,$template_image);
+        echo json_encode($data);
+    }
+		function getUsers($postData=null,$reference=null,$tag=null,$event=null){
+			$response = array();
+
+			## Read value
+			$draw = $postData['draw'];
+			$start = $postData['start'];
+			$rowperpage = $postData['length']; // Rows display per page
+			$columnIndex = $postData['order'][0]['column']; // Column index
+			$columnName = $postData['columns'][$columnIndex]['data']; // Column name
+			$columnSortOrder = $postData['order'][0]['dir']; // asc or desc
+			$searchValue = $postData['search']['value']; // Search value
+
+			## Search 
+			$searchQuery = function ($query) use ($searchValue) {
+			$query->where('company_name', 'like', '%' . $searchValue . '%');
+			};
+
+			## Total number of records without filtering
+			$totalRecords = Companies::count();
+
+			// Total number of records with filtering
+			$totalRecordwithFilter = Companies::where($searchQuery)->count();
+
+			// Fetch records
+			$records = Companies::select('id','company_name','doc')
+				->where($searchQuery)
+				->skip($start)
+				->take($rowperpage)
+				->get();
+				$data = array();
+				
+				foreach($records as $record ){
+					$company_name="";
+					if(!empty($record->company_name)){
+						$company_name=$record->company_name;
+					}
+				   
+					$doc="";
+					if(!empty($record->doc)){
+						$filepath=asset("storage/".$record->doc);
+						$doc='<img src="'.$filepath.'" width="200px" height="150px">';
+					}
+					$btn='<span data="'.$record->id.'" id="companyDelete" class="btn btn-danger">Delete</span> || <span data="'.$record->id.'" id="companyEdit" class="btn btn-warning">Edit</span>';
+			
+				$data[] = array( 
+					"company_name"=>$company_name,
+					"doc"=>$doc,
+					"action"=>$btn
+				); 
+			}
+		
+			## Response
+			$response = array(
+			"draw" => intval($draw),
+			"iTotalRecords" => $totalRecords,
+			"iTotalDisplayRecords" => $totalRecordwithFilter,
+			"aaData" => $data
+			);
+			return $response; 
+		}
+	----script------
+	 display();
+        function display(){
+            var empTable = $('#empTable');
+            // Check if DataTable is already initialized
+            if (!$.fn.DataTable.isDataTable(empTable)) {
+                $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+                });
+                empTable.DataTable({
+                'processing': true,
+                'serverSide': true,
+                'serverMethod': 'post',
+                'ajax': {
+                    'url': '{{ route("template_datatable")}}',
+                },
+                'columns': [
+                    { data: 'template_name' },
+                    { data: 'doc' },
+                    { data: 'action'},
+                ]
+                });
+            }
+        }
+--modal----
+<!-- Add Modal -->
+    <div class="modal" id="addModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h4 class="modal-title">Add</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <!-- Modal body -->
+            <div class="modal-body">
+                <div class="container">
+                    <form id="formInsert" method="post" encytype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="">Template Name</label>
+                            <input type="text" class="form-control" name="template_name">
+                        </div>
+                        <div class="form-group">
+                            <label for="">Template Image</label>
+                            <input type="hidden" class="form-control" name="original_image">
+                            <input type="file" class="form-control" name="doc">
+                        </div>
+                        <div class="form-group">
+                            <input type="submit" class="btn btn-success" value="Create">
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            </div>
+
+            </div>
+        </div>
+    </div>		
+	 toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": false,
+        "progressBar": false,
+        "positionClass": "toast-top-right",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "6000",
+        "extendedTimeOut": "60000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+		};
+
+	
+	$.ajaxSetup({
+	  headers: {
+		'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+	  }
+	});
